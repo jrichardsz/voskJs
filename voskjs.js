@@ -148,6 +148,27 @@ function createRecognizer(model, { sampleRate=SAMPLE_RATE, grammar=null, alterna
  *
  */ 
 async function transcriptFromFile(fileName, model, { multiThreads=true, sampleRate=SAMPLE_RATE, grammar=null, alternatives=0, words=true } = {}) {
+  const recognizer = createRecognizer( model, {sampleRate, grammar, alternatives, words} )
+  const response = await transcriptFromFileWithPreLoadRecognizer(buffer, recognizer, { multiThreads=multiThreads} = {})  
+  recognizer.free()
+  return response;
+}
+
+/**
+ * @function transcriptFromFileWithPreLoadRecognizer
+ * speech recognition into a text, from an audio file, given a specified Vosk model and preloaded recognizer
+ *
+ * @alias transcript
+ * @public
+ * @async
+ *
+ * @param {String}                     fileName     the name of speech file, in WAV format
+ * @param {VoskRecognizerArgsObject}   [options]    Vosk Recognizer arguments setting. Optional. 
+ *
+ * @return {Promise<VoskResultObject>} transcript object returned by Vosk engine
+ *
+ */ 
+async function transcriptFromFileWithPreLoadRecognizer(fileName, recognizer, { multiThreads=true} = {}) {
 
   const DEBUG = false
 
@@ -229,7 +250,6 @@ async function transcriptFromFile(fileName, model, { multiThreads=true, sampleRa
 
 }
 
-
 /**
  * @function transcriptEventsFromFile
  *
@@ -246,6 +266,27 @@ async function transcriptFromFile(fileName, model, { multiThreads=true, sampleRa
  *
  */ 
 function transcriptEventsFromFile(fileName, model, { multiThreads=true, sampleRate=SAMPLE_RATE, grammar=null, alternatives=0, words=true } = {}) {
+  const recognizer = createRecognizer( model, {sampleRate, grammar, alternatives, words} )
+  const response = transcriptEventsFromFileWithPreLoadRecognizer(buffer, recognizer, { multiThreads=multiThreads} = {})  
+  recognizer.free()
+  return response;  
+}
+
+/**
+ * @function transcriptEventsFromFileWithPreLoadRecognizer
+ *
+ * speech recognition into a text, from an audio file, given a specified Vosk model and preloaded recognizer
+ * return an events emitter
+ *
+ * @public
+ *
+ * @param {String}                     fileName     the name of speech file, in WAV format
+ * @param {VoskRecognizerArgsObject}   [options]    Vosk Recognizer arguments setting. Optional. 
+ *
+ * @return {Emitter}                   emit events
+ *
+ */ 
+function transcriptEventsFromFileWithPreLoadRecognizer(fileName, recognizer, { multiThreads=true} = {}) {
 
   const DEBUG = false
 
@@ -260,8 +301,6 @@ function transcriptEventsFromFile(fileName, model, { multiThreads=true, sampleRa
 
   // the function is enabled to emit events 
   const event = new emitter()
-
-  const recognizer = createRecognizer( model, {sampleRate, grammar, alternatives, words} )
 
   if (DEBUG)
     console.log(`recognizer latency   : ${getTimer('createRecognizer')}ms`)
@@ -338,7 +377,6 @@ function transcriptEventsFromFile(fileName, model, { multiThreads=true, sampleRa
 
 }
 
-
 /**
  * @function transcriptFromBuffer
  * speech recognition into a text, from an audio file, given a specified Vosk model
@@ -355,8 +393,27 @@ function transcriptEventsFromFile(fileName, model, { multiThreads=true, sampleRa
  *
  */ 
 async function transcriptFromBuffer(buffer, model, { multiThreads=true, sampleRate=SAMPLE_RATE, grammar=null, alternatives=0, words=true } = {}) {
-
   const recognizer = createRecognizer( model, {sampleRate, grammar, alternatives, words} )
+  const response = await transcriptFromBufferWithPreLoadRecognizer(buffer, recognizer, { multiThreads=multiThreads} = {})  
+  recognizer.free()
+  return response;
+}
+
+/**
+ * @function transcriptFromBufferWithPreLoadRecognizer
+ * speech recognition into a text, from an audio file, given a specified Vosk model and preloaded recognizer
+ *
+ * @alias transcript
+ * @public
+ * @async
+ *
+ * @param {Buffer}                     buffer       input buffer, in PCM format
+ * @param {VoskRecognizerArgsObject}   [options]    Vosk Recognizer arguments setting. Optional. 
+ *
+ * @return {Promise<VoskResultObject>} transcript object returned by Vosk engine
+ *
+ */ 
+async function transcriptFromBufferWithPreLoadRecognizer(buffer, recognizer, { multiThreads=true} = {}) {
    
   // https://gist.github.com/wpscholar/270005d42b860b1c33cf5ab25b37928a
   // https://stackoverflow.com/questions/47089230/how-to-convert-buffer-to-stream-in-nodejs
@@ -375,12 +432,12 @@ async function transcriptFromBuffer(buffer, model, { multiThreads=true, sampleRa
     await recognizer.acceptWaveformAsync(buffer)
   else
     recognizer.acceptWaveform(buffer)
-
+  
   // copy final Vosk engine result object
   const result = {...recognizer.finalResult(recognizer)} 
 
-  recognizer.free()
-    
+  //@TODO The following line cause errors with preloaded recognizer
+  //recognizer.free()  
   return Promise.resolve(result)
 
 }
@@ -402,12 +459,31 @@ async function transcriptFromBuffer(buffer, model, { multiThreads=true, sampleRa
  *
  */ 
 async function transcriptEventsFromBuffer(buffer, model, { multiThreads=true, sampleRate=SAMPLE_RATE, grammar=null, alternatives=0, words=true } = {}) {
+  const recognizer = createRecognizer( model, {sampleRate, grammar, alternatives, words} )
+  const event = await transcriptEventsFromBufferWithPreLoadRecognizer(buffer, recognizer, {multiThreads})
+  recognizer.free()
+  return event;
+}
+
+/**
+ * @function transcriptEventsFromBufferWithPreLoadRecognizer
+ * speech recognition into a text, from an audio file, given a specified Vosk model and preloaded recognizer
+ *
+ * @alias transcript
+ * @public
+ * @async
+ *
+ * @param {Buffer}                     buffer       input buffer, in PCM format
+ * @param {VoskRecognizerArgsObject}   [options]    Vosk Recognizer arguments setting. Optional. 
+ *
+ * @return {Emitter}                                
+ *
+ */ 
+async function transcriptEventsFromBufferWithPreLoadRecognizer(buffer, recognizer, { multiThreads=true} = {}) {
 
   // the function is enabled to emit events 
   const event = new emitter()
 
-  const recognizer = createRecognizer( model, {sampleRate, grammar, alternatives, words} )
-   
   // https://gist.github.com/wpscholar/270005d42b860b1c33cf5ab25b37928a
   // https://stackoverflow.com/questions/47089230/how-to-convert-buffer-to-stream-in-nodejs
   
@@ -471,8 +547,6 @@ async function transcriptEventsFromBuffer(buffer, model, { multiThreads=true, sa
   return event
 
 }
-
-
 
 /**
  * @function freeModel
@@ -764,11 +838,15 @@ if (require.main === module)
 module.exports = { 
   logLevel,
   loadModel,
+  createRecognizer,
   transcriptFromBuffer,
+  transcriptFromBufferWithPreLoadRecognizer,
   transcriptEventsFromBuffer,
+  transcriptEventsFromFileWithPreLoadRecognizer,
   transcriptFromFile,
+  transcriptFromFileWithPreLoadRecognizer,
   transcriptEventsFromFile,
-  //transcript: transcriptFromFile, // alias
+  transcriptEventsFromBufferWithPreLoadRecognizer,
   freeModel
 }
 
